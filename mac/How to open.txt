@@ -1,0 +1,15 @@
+Scene Filter for Mac
+
+1. Drag "Scene Filter" into your Applications folder.
+2. Double-click it. macOS says it can't verify the app: click Done.
+3. Open System Settings > Privacy & Security, scroll down, click "Open Anyway" next to Scene Filter, and enter your password.
+   (macOS 14 or older: right-click the app, choose Open, then Open.)
+4. The first launch sets itself up: a few minutes, needs internet, about 700 MB of space.
+   Then it opens in your browser. Drag a movie into the drop area, or click "Choose movie..." (quicker for big files).
+
+If macOS says the app "is damaged", open Terminal and run:
+  xattr -cr "/Applications/Scene Filter.app"
+then open it again.
+
+A small "Scene Filter is open in your browser" window stays up while it runs. Use it to reopen the page or quit.
+Filtered movies and timestamp lists are saved in your Movies/Scene Filter folder.

@@ -1,0 +1,83 @@
+#!/bin/bash
+# Scene Filter launcher. First run downloads Python, the detector and ffmpeg into
+# ~/Library/Application Support/Scene Filter (about 400 MB), then opens the app in your browser.
+set -u
+SETUP_VERSION=1   # bump when requirements change so existing installs update
+CONTENTS="$(cd "$(dirname "$0")/.." && pwd)"
+SRC="$CONTENTS/Resources/app"
+SUPPORT="$HOME/Library/Application Support/Scene Filter"
+ENV="$SUPPORT/env"
+UV="$SUPPORT/bin/uv"
+LOG="$SUPPORT/scene-filter.log"
+URLFILE="$SUPPORT/url"
+PIDFILE="$SUPPORT/server.pid"
+export UV_PYTHON_INSTALL_DIR="$SUPPORT/python" UV_CACHE_DIR="$SUPPORT/cache"
+export SCENE_FILTER_OUTPUT="$HOME/Movies/Scene Filter" SCENE_FILTER_URL_FILE="$URLFILE"
+export SCENE_FILTER_MODELS="$SUPPORT/models"   # the accurate detector is downloaded here on first scan
+# The starter (run.py) keeps the app up to date: it needs to know where to keep versions and how to install packages.
+export SCENE_FILTER_SUPPORT="$SUPPORT" SCENE_FILTER_UV="$UV"
+export PYTHONDONTWRITEBYTECODE=1 GRADIO_ANALYTICS_ENABLED=False
+# Movies dropped into the window are copied here while in use, and cleared on every start and quit.
+export GRADIO_TEMP_DIR="$SUPPORT/dropped-movies"
+mkdir -p "$SUPPORT/bin" "$SCENE_FILTER_OUTPUT"
+exec >>"$LOG" 2>&1
+echo "=== $(date) launch"
+
+dialog() {  # dialog "message" "Button A" ["Button B"] -> prints the button pressed
+  local buttons="\"$2\""; [ $# -ge 3 ] && buttons="\"$3\", \"$2\""
+  osascript -e 'tell me to activate' \
+    -e "button returned of (display dialog \"$1\" buttons {$buttons} default button \"$2\" with title \"Scene Filter\")" 2>/dev/null
+}
+fail() {
+  echo "FAILED: $1"
+  [ "$(dialog "$1\n\nDetails are in the log file." "OK" "Show log")" = "Show log" ] && open -R "$LOG"
+  exit 1
+}
+
+# Already running? Just bring the page back up.
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null && [ -s "$URLFILE" ]; then
+  open "$(cat "$URLFILE")"; exit 0
+fi
+
+if [ ! -f "$SUPPORT/.ready-$SETUP_VERSION" ]; then
+  osascript -e 'display notification "Setting up for the first time. This takes a few minutes and needs internet." with title "Scene Filter"'
+  if [ ! -x "$UV" ]; then
+    case "$(uname -m)" in arm64|aarch64) ARCH=aarch64 ;; *) ARCH=x86_64 ;; esac
+    case "$(uname -s)" in Darwin) PLAT=apple-darwin ;; *) PLAT=unknown-linux-gnu ;; esac
+    curl -fsSL "https://github.com/astral-sh/uv/releases/latest/download/uv-$ARCH-$PLAT.tar.gz" -o "$SUPPORT/uv.tar.gz" \
+      && tar -xzf "$SUPPORT/uv.tar.gz" -C "$SUPPORT/bin" --strip-components 1 && rm -f "$SUPPORT/uv.tar.gz" \
+      || fail "Scene Filter couldn't download its setup tool. Check your internet connection and try again."
+  fi
+  rm -rf "$ENV"
+  "$UV" venv --python 3.12 "$ENV" || fail "Scene Filter couldn't set up Python."
+  "$UV" pip install --python "$ENV/bin/python" -r "$SRC/requirements.txt" \
+    || fail "Scene Filter couldn't download the packages it needs. Check your internet connection and try again."
+  rm -f "$SUPPORT"/.ready-*; touch "$SUPPORT/.ready-$SETUP_VERSION"
+  osascript -e 'display notification "Setup finished. Opening Scene Filter." with title "Scene Filter"'
+fi
+
+rm -f "$URLFILE"; rm -rf "$GRADIO_TEMP_DIR"
+"$ENV/bin/python" "$SRC/run.py" &
+SERVER=$!
+echo $SERVER > "$PIDFILE"
+cleanup() { kill "$SERVER" 2>/dev/null; sleep 1; rm -f "$PIDFILE" "$URLFILE"; rm -rf "$GRADIO_TEMP_DIR"; }
+trap cleanup EXIT
+
+for _ in $(seq 1 900); do  # wait up to 15 minutes: an update may need to install packages first
+  [ -s "$URLFILE" ] && break
+  kill -0 "$SERVER" 2>/dev/null || fail "Scene Filter stopped while starting."
+  sleep 1
+done
+[ -s "$URLFILE" ] || fail "Scene Filter took too long to start."
+osascript -e 'display notification "Scene Filter is open in your browser." with title "Scene Filter"' 2>/dev/null
+
+# Keep a small window up while it runs: it's how you quit.
+while kill -0 "$SERVER" 2>/dev/null; do
+  choice="$(dialog "Scene Filter is open in your browser.\n\nLeave this window here while you use it. Quitting stops any scan or save in progress." "Open in browser" "Quit Scene Filter")"
+  case "$choice" in
+    "Quit Scene Filter") break ;;
+    "Open in browser") open "$(cat "$URLFILE")" ;;
+    *) sleep 2 ;;
+  esac
+done
+echo "=== $(date) quit"

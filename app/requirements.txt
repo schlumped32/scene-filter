@@ -1,0 +1,5 @@
+nudenet>=3.4,<4
+gradio>=5,<7
+pandas
+numpy
+imageio-ffmpeg

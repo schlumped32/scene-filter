@@ -1,0 +1,17 @@
+Scene Filter for Windows
+
+1. Before unzipping: right-click the downloaded zip, choose Properties, tick "Unblock" at the bottom
+   (if it's there), and click OK. This stops Windows warning about every file.
+2. Right-click the zip and choose "Extract All...". Put the "Scene Filter for Windows" folder anywhere you like,
+   for example your Documents folder.
+3. Open the folder and double-click "Scene Filter" (Scene Filter.cmd).
+   If a blue "Windows protected your PC" box appears: click "More info", then "Run anyway".
+4. The first launch sets itself up: a few minutes, needs internet, about 700 MB of space.
+   Then it opens in your browser. Drag a movie into the drop area, or click "Choose movie..." (quicker for big files).
+
+A black Scene Filter window stays open while it runs. Leave it open; close it to quit.
+If you close the browser tab by accident, the window shows the address to open it again (usually http://127.0.0.1:7860).
+Filtered movies and timestamp lists are saved in your Videos\Scene Filter folder.
+
+To uninstall: delete the "Scene Filter for Windows" folder and the folder %LOCALAPPDATA%\Scene Filter
+(paste that into the File Explorer address bar to find it).
