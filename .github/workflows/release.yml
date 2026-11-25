@@ -1,0 +1,42 @@
+# Publishes a release when a version tag (v6, v7, ...) is pushed.
+# Builds the update package, latest.json and the Mac/Windows downloads with tools/build.py,
+# then creates the GitHub release with them attached, using release-notes/v<N>.md as its text.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check the tag matches app/VERSION
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(tr -d '[:space:]' < app/VERSION)"
+          if [ "$tag" != "$version" ]; then
+            echo "Tag v$tag doesn't match app/VERSION ($version)"; exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Build release files
+        run: python tools/build.py --repo "$GITHUB_REPOSITORY"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="release-notes/v$VERSION.md"
+          [ -f "$notes" ] || notes=/dev/null
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Version $VERSION" --notes-file "$notes" --latest
