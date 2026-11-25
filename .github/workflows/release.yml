@@ -1,9 +1,11 @@
-# Publishes a release when a version tag (v6, v7, ...) is pushed.
+# Publishes a release of the version in app/VERSION.
+# Start it from the Actions tab (Release > Run workflow), or by pushing a tag like v7.
 # Builds the update package, latest.json and the Mac/Windows downloads with tools/build.py,
 # then creates the GitHub release with them attached, using release-notes/v<N>.md as its text.
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     tags: ["v*"]
 
@@ -20,12 +22,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check the tag matches app/VERSION
+      - name: Work out the version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          tag="${GITHUB_REF_NAME#v}"
           version="$(tr -d '[:space:]' < app/VERSION)"
-          if [ "$tag" != "$version" ]; then
-            echo "Tag v$tag doesn't match app/VERSION ($version)"; exit 1
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "Tag $GITHUB_REF_NAME doesn't match app/VERSION ($version)"; exit 1
+          fi
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Version $version is already released. Raise app/VERSION to publish a new one."; exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
@@ -38,5 +44,5 @@ jobs:
         run: |
           notes="release-notes/v$VERSION.md"
           [ -f "$notes" ] || notes=/dev/null
-          gh release create "$GITHUB_REF_NAME" dist/* \
+          gh release create "v$VERSION" dist/* --target "$GITHUB_SHA" \
             --title "Version $VERSION" --notes-file "$notes" --latest

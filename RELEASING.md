@@ -8,9 +8,9 @@ they start, so publishing a GitHub release is all it takes to update everyone.
    computer is never retried there, so a fix must be a new number.)
 3. If `requirements.txt` changed, installed copies install the new packages on their next start; nothing else to do.
 4. Write the release notes in `release-notes/v<VERSION>.md` (what's better, what's fixed).
-5. Commit, then push a tag: `git tag v<VERSION> && git push origin main v<VERSION>`.
-   The **Release** workflow (`.github/workflows/release.yml`) checks the tag matches `app/VERSION`, runs
-   `tools/build.py`, and publishes the GitHub release as the latest one with all four files attached:
+5. Commit and push to `main`, then publish: on GitHub open **Actions > Release > Run workflow** (or push a tag
+   `v<VERSION>`). The **Release** workflow (`.github/workflows/release.yml`) refuses a version that's already
+   released, runs `tools/build.py`, and publishes the GitHub release as the latest one with all four files attached:
    `scene-filter-app-<VERSION>.zip`, `latest.json`, `Scene_Filter_for_Mac.zip`, `Scene_Filter_for_Windows.zip`.
    Installed copies pick it up the next time they start.
 
