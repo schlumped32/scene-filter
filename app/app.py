@@ -85,7 +85,7 @@ def _movie_path(upload, typed: str) -> str:
     return path
 
 
-def do_scan(upload, typed, animated, sensitivity, classes, sample_fps, padding, merge_gap, min_hits, clear_previews,
+def do_scan(upload, typed, animated, sensitivity, classes, sample_fps, padding, merge_gap, min_hits,
             double_check, progress=gr.Progress()):
     path = _movie_path(upload, typed)
     if not classes:
@@ -108,11 +108,9 @@ def do_scan(upload, typed, animated, sensitivity, classes, sample_fps, padding, 
     # A fresh list every scan, all ticked, so ticks from a previous movie never carry over.
     picks = SceneList(review.scene_rows(scenes), value=[s.index for s in scenes], label=SCENES_LABEL,
                       visible=bool(scenes), elem_classes="sf-scenes", padding=False)
-    gallery = [(s.thumbnail, f"Scene {s.index}: {core.fmt_ts(s.start)} to {core.fmt_ts(s.end, round_up=True)}")
-               for s in scenes if s.thumbnail]
     state = {"path": path, "run_dir": str(run_dir), "scenes": scenes}
     # The result line is cleared so the last save message can't be mistaken for this movie's.
-    return state, summary, picks, gr.Gallery(value=gallery, visible=bool(gallery)), list(files.values()), ""
+    return state, summary, picks, list(files.values()), ""
 
 
 def do_export(state, picked, mode_label, mute, progress=gr.Progress()):
@@ -179,7 +177,6 @@ def build_ui() -> gr.Blocks:
                     min_hits = gr.Slider(1, 5, value=2, step=1, label="Frames a scene needs to count")
                 double_check = gr.Checkbox(True, label="Double-check suspicious moments with the accurate detector",
                                            info="Recommended. A little slower.")
-                clear_previews = gr.Checkbox(False, label="Show unblurred preview images")
             scan_btn = gr.Button("Scan movie", variant="primary", size="lg")
 
         with gr.Column(elem_classes="sf-card"):
@@ -187,8 +184,6 @@ def build_ui() -> gr.Blocks:
             summary = gr.HTML('<div class="sf-summary"><span class="sf-meta">Scan a movie to see what it '
                               "finds here.</span></div>", padding=False)
             picks = SceneList(label=SCENES_LABEL, visible=False, elem_classes="sf-scenes", padding=False)
-            gallery = gr.Gallery(label="Previews", columns=4, height=210, object_fit="cover", visible=False,
-                                 elem_classes="sf-boxed")
 
         with gr.Column(elem_classes="sf-card"):
             _step("Save")
@@ -203,7 +198,7 @@ def build_ui() -> gr.Blocks:
                             elem_classes="sf-boxed")
 
         scan_btn.click(do_scan, [upload, typed, animated, sensitivity, classes, sample_fps, padding, merge_gap, min_hits,
-                                 clear_previews, double_check], [state, summary, picks, gallery, files, result])
+                                 double_check], [state, summary, picks, files, result])
         pick_btn.click(pick_movie, [typed], [typed, upload])
         upload.upload(lambda: "", None, typed)  # a dropped movie replaces a chosen one
         folder_btn.click(show_output, [state], [result])

@@ -35,6 +35,17 @@ if not video.exists():
 (WORK / "video").write_text(str(video))
 
 
+def _picture():
+    """A stand-in frame with big shapes and fine detail, so the two blur levels look visibly different."""
+    import cv2
+
+    f = np.full((320, 320, 3), (60, 90, 140), np.uint8)
+    cv2.rectangle(f, (30, 50), (150, 170), (230, 220, 200), -1)
+    cv2.circle(f, (230, 200), 70, (90, 170, 230), -1)
+    f[250:310, 20:300] = ((np.indices((60, 280)).sum(axis=0) % 6 < 3) * 255).astype(np.uint8)[..., None]
+    return f
+
+
 def _hits():
     return ([core.Hit(t, 0.9, ["FEMALE_BREAST_EXPOSED"]) for t in (10, 11, 12)]
             + [core.Hit(t, 0.8, ["BUTTOCKS_EXPOSED"]) for t in (30, 31)])
@@ -51,7 +62,7 @@ def fake_refine(path, windows, threshold, classes=None, model_path=None, refine_
     hits = [h for h in _hits() if h.score >= threshold]
     if keep_frames_for is not None:
         for h in hits:
-            keep_frames_for[h.t] = np.full((320, 320, 3), 128, np.uint8)
+            keep_frames_for[h.t] = _picture()
     return hits
 
 

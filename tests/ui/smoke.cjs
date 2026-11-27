@@ -28,6 +28,16 @@ async function run(browser, url, video, scheme, width) {
   await page.getByRole('button', { name: 'Scan movie' }).click();
   await page.locator('.sf-count').filter({ hasText: '2' }).waitFor({ timeout: 60000 });
   if (!(await page.getByText('Double-checked with the accurate detector').isVisible())) throw new Error('badge missing');
+  // Look closer opens a lighter (still blurred) view under that scene only; Blur again closes it.
+  const light = page.locator('img[src*="_light.jpg"]');
+  if (await light.first().isVisible()) throw new Error('light view open before Look closer');
+  await page.getByRole('button', { name: 'Look closer' }).first().click();
+  await light.first().waitFor({ state: 'visible', timeout: 5000 });
+  if ((await light.evaluateAll(els => els.filter(e => e.offsetParent).length)) !== 1) throw new Error('more than one scene opened');
+  await page.getByRole('button', { name: 'Blur again' }).click();
+  await light.first().waitFor({ state: 'hidden', timeout: 5000 });
+  if (await page.getByText('Show unblurred preview images').count()) throw new Error('old unblurred setting still there');
+  if (await page.getByText('Previews', { exact: true }).count()) throw new Error('old previews strip still there');
   await page.getByText(/Exposed buttocks/).click();          // untick the second scene
   await page.getByText('Black screen', { exact: true }).click();
   await page.getByRole('button', { name: 'Save filtered movie' }).click();
@@ -39,6 +49,7 @@ async function run(browser, url, video, scheme, width) {
   await page.waitForTimeout(500);
   if (await page.getByText(/Done\. 1 scene\(s\) filtered/).isVisible()) throw new Error('old save message still shown after a new scan');
   if (!(await page.locator('.sf-tag').first().isVisible())) throw new Error('scene rows have no pastel tag');
+  if ((await light.evaluateAll(els => els.filter(e => e.offsetParent).length)) !== 0) throw new Error('light view left open after rescan');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   await page.close();
   if (overflow) throw new Error(`page scrolls sideways at ${width}px`);
