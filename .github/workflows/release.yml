@@ -30,7 +30,13 @@ jobs:
           if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
             echo "Tag $GITHUB_REF_NAME doesn't match app/VERSION ($version)"; exit 1
           fi
-          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          draft="$(gh release view "v$version" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null || true)"
+          if [ "$draft" = "true" ]; then
+            # A leftover draft (never published, so no installed copy has seen it) would block the release:
+            # remove it and publish a fresh one.
+            echo "Removing the unpublished draft of version $version"
+            gh release delete "v$version" --repo "$GITHUB_REPOSITORY" --yes
+          elif [ "$draft" = "false" ]; then
             echo "Version $version is already released. Raise app/VERSION to publish a new one."; exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
