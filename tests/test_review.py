@@ -21,12 +21,13 @@ def test_summary_quick_fallback():
     assert "quick detector" in h and "accurate detector couldn" in h
 
 
-def test_scene_choices_label():
-    [(label, idx)] = review.scene_choices([s(1, 3422.0, 3429.4, ["FEMALE_BREAST_EXPOSED"], 0.88)])
-    assert idx == 1 and label == "00:57:02 – 00:57:10 · Exposed breast · 88%"
-
-
 def test_apply_picks_only_current_scenes():
     scenes = [s(1, 0, 3, ["BUTTOCKS_EXPOSED"], .7), s(2, 9, 12, ["BUTTOCKS_EXPOSED"], .8)]
     review.apply_picks(scenes, [2, 7])   # 7 is a leftover from another movie
     assert [x.include for x in scenes] == [False, True]
+
+
+def test_scene_rows_for_the_scene_list():
+    rows = review.scene_rows([s(1, 3422.0, 3429.4, ["FEMALE_BREAST_EXPOSED", "BUTTOCKS_EXPOSED"], 0.884)])
+    assert rows == [{"index": 1, "time": "00:57:02 – 00:57:10", "tag": "Exposed breast, Exposed buttocks",
+                     "confidence": 88}]

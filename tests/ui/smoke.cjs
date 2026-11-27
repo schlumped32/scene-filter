@@ -33,6 +33,12 @@ async function run(browser, url, video, scheme, width) {
   await page.getByRole('button', { name: 'Save filtered movie' }).click();
   await page.getByText(/Done\. 1 scene\(s\) filtered/).waitFor({ timeout: 60000 });
   await page.screenshot({ path: path.join(shots, `${scheme}-${width}.png`), fullPage: true });
+  // Scanning again must clear the previous save message, so it can't be mistaken for the new movie's.
+  await page.getByRole('button', { name: 'Scan movie' }).click();
+  await page.locator('.sf-count').filter({ hasText: '2' }).waitFor({ timeout: 60000 });
+  await page.waitForTimeout(500);
+  if (await page.getByText(/Done\. 1 scene\(s\) filtered/).isVisible()) throw new Error('old save message still shown after a new scan');
+  if (!(await page.locator('.sf-tag').first().isVisible())) throw new Error('scene rows have no pastel tag');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   await page.close();
   if (overflow) throw new Error(`page scrolls sideways at ${width}px`);

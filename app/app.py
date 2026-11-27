@@ -14,6 +14,7 @@ import gradio as gr
 
 import review
 import theme
+from scene_list import SceneList
 from scene_filter import core
 
 APP_DIR = Path(__file__).resolve().parent
@@ -105,12 +106,13 @@ def do_scan(upload, typed, animated, sensitivity, classes, sample_fps, padding, 
     summary = review.summary_html(len(scenes), sum(s.duration for s in scenes), duration, time.time() - t0,
                                   report.suspicious, report.accurate_model, double_check, animated)
     # A fresh list every scan, all ticked, so ticks from a previous movie never carry over.
-    picks = gr.CheckboxGroup(choices=review.scene_choices(scenes), value=[s.index for s in scenes],
-                             visible=bool(scenes))
+    picks = SceneList(review.scene_rows(scenes), value=[s.index for s in scenes], label=SCENES_LABEL,
+                      visible=bool(scenes), elem_classes="sf-scenes", padding=False)
     gallery = [(s.thumbnail, f"Scene {s.index}: {core.fmt_ts(s.start)} to {core.fmt_ts(s.end, round_up=True)}")
                for s in scenes if s.thumbnail]
     state = {"path": path, "run_dir": str(run_dir), "scenes": scenes}
-    return state, summary, picks, gr.Gallery(value=gallery, visible=bool(gallery)), list(files.values())
+    # The result line is cleared so the last save message can't be mistaken for this movie's.
+    return state, summary, picks, gr.Gallery(value=gallery, visible=bool(gallery)), list(files.values()), ""
 
 
 def do_export(state, picked, mode_label, mute, progress=gr.Progress()):
@@ -134,6 +136,8 @@ def do_export(state, picked, mode_label, mute, progress=gr.Progress()):
     return list(files.values()), (
         f"Done. {len(chosen)} scene(s) filtered ({mode_label.lower()}).\n\nSaved to `{dst}`")
 
+
+SCENES_LABEL = "Flagged scenes: ticked ones get filtered"
 
 HEADER = f"""<div class="sf-header">
   <div class="sf-brand"><span class="sf-mark"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -182,8 +186,7 @@ def build_ui() -> gr.Blocks:
             _step("Review")
             summary = gr.HTML('<div class="sf-summary"><span class="sf-meta">Scan a movie to see what it '
                               "finds here.</span></div>", padding=False)
-            picks = gr.CheckboxGroup(label="Flagged scenes: ticked ones get filtered", choices=[], visible=False,
-                                     elem_classes="sf-scenes")
+            picks = SceneList(label=SCENES_LABEL, visible=False, elem_classes="sf-scenes", padding=False)
             gallery = gr.Gallery(label="Previews", columns=4, height=210, object_fit="cover", visible=False,
                                  elem_classes="sf-boxed")
 
@@ -200,7 +203,7 @@ def build_ui() -> gr.Blocks:
                             elem_classes="sf-boxed")
 
         scan_btn.click(do_scan, [upload, typed, animated, sensitivity, classes, sample_fps, padding, merge_gap, min_hits,
-                                 clear_previews, double_check], [state, summary, picks, gallery, files])
+                                 clear_previews, double_check], [state, summary, picks, gallery, files, result])
         pick_btn.click(pick_movie, [typed], [typed, upload])
         upload.upload(lambda: "", None, typed)  # a dropped movie replaces a chosen one
         folder_btn.click(show_output, [state], [result])

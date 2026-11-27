@@ -152,10 +152,7 @@ footer { display: none !important; }
 .sf-badge.sf-badge-quick { background: var(--sf-tag-bg); color: var(--sf-tag-fg); }
 .sf-empty { font-size: 20px; font-weight: 800; color: var(--sf-text); }
 
-/* Scene rows: each flagged scene is one tick-box row */
-.sf-scenes .wrap { display: grid !important; gap: 6px !important; }
-.sf-scenes label { width: 100%; border-radius: 11px !important; padding: 10px 12px !important;
-  font-family: var(--sf-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+/* Scene rows are styled by scene_list.py */
 
 /* Filter choice as one row of buttons */
 .sf-modes .wrap { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px !important;

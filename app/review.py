@@ -32,10 +32,10 @@ def summary_html(n_scenes: int, total_s: float, duration_s: float, seconds: floa
             f"Untick any scene you want left alone. Times include a little padding before and after.</span></div>")
 
 
-def scene_choices(scenes: list[Scene]) -> list[tuple[str, int]]:
-    """One tick-box row per scene: its time range, what was detected, and how sure the detector was."""
-    return [(f"{fmt_ts(s.start)} – {fmt_ts(s.end, round_up=True)} · {s.label_text()} · {s.peak_score:.0%}", s.index)
-            for s in scenes]
+def scene_rows(scenes: list[Scene]) -> list[dict]:
+    """What each row of the scene list shows: its time range, a tag naming what was detected, and confidence."""
+    return [{"index": s.index, "time": f"{fmt_ts(s.start)} – {fmt_ts(s.end, round_up=True)}",
+             "tag": s.label_text(), "confidence": round(s.peak_score * 100)} for s in scenes]
 
 
 def apply_picks(scenes: list[Scene], picked: list[int]) -> list[Scene]:
