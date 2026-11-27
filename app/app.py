@@ -153,10 +153,10 @@ def build_ui() -> gr.Blocks:
         state = gr.State(None)
         gr.HTML(HEADER, padding=False)
 
-        with gr.Group(elem_classes="sf-card"):
+        with gr.Column(elem_classes="sf-card"):
             _step("Movie")
             upload = gr.File(label="Drop a movie here, or click to browse", file_types=VIDEO_TYPES,
-                             type="filepath", height=150)
+                             type="filepath", height=150, elem_classes="sf-drop")
             with gr.Row(equal_height=True):
                 typed = gr.Textbox(label="...or choose one without copying it (best for big files)" if CAN_PICK
                                    else "...or paste the movie's full path (best for big files)",
@@ -178,15 +178,16 @@ def build_ui() -> gr.Blocks:
                 clear_previews = gr.Checkbox(False, label="Show unblurred preview images")
             scan_btn = gr.Button("Scan movie", variant="primary", size="lg")
 
-        with gr.Group(elem_classes="sf-card"):
+        with gr.Column(elem_classes="sf-card"):
             _step("Review")
             summary = gr.HTML('<div class="sf-summary"><span class="sf-meta">Scan a movie to see what it '
                               "finds here.</span></div>", padding=False)
             picks = gr.CheckboxGroup(label="Flagged scenes: ticked ones get filtered", choices=[], visible=False,
                                      elem_classes="sf-scenes")
-            gallery = gr.Gallery(label="Previews", columns=6, height="auto", visible=False)
+            gallery = gr.Gallery(label="Previews", columns=4, height=210, object_fit="cover", visible=False,
+                                 elem_classes="sf-boxed")
 
-        with gr.Group(elem_classes="sf-card"):
+        with gr.Column(elem_classes="sf-card"):
             _step("Save")
             mode = gr.Radio(list(MODE_LABELS), value="Cut out", label="What to do with ticked scenes",
                             elem_classes="sf-modes")
@@ -195,7 +196,8 @@ def build_ui() -> gr.Blocks:
                 export_btn = gr.Button("Save filtered movie", variant="primary", size="lg", scale=3)
                 folder_btn = gr.Button("Open output folder", visible=IS_MAC or os.name == "nt", scale=2)
             result = gr.Markdown()
-            files = gr.File(label="Timestamp lists (CSV, JSON, text, Kodi skip file)", file_count="multiple")
+            files = gr.File(label="Timestamp lists (CSV, JSON, text, Kodi skip file)", file_count="multiple",
+                            elem_classes="sf-boxed")
 
         scan_btn.click(do_scan, [upload, typed, animated, sensitivity, classes, sample_fps, padding, merge_gap, min_hits,
                                  clear_previews, double_check], [state, summary, picks, gallery, files])

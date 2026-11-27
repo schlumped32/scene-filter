@@ -75,6 +75,9 @@ def make_theme() -> gr.themes.Base:
         "slider_color": (L["accent"], D["accent"]),
         "loader_color": (L["accent"], D["accent"]),
         "table_border_color": (L["border"], D["border"]),
+        "table_odd_background_fill": (L["card"], D["card"]),
+        "table_even_background_fill": (l["row"], d["row"]),
+        "table_row_focus": (L["badge_bg"], D["badge_bg"]),
     }
     settings = {}
     for name, (light, dark) in pairs.items():
@@ -127,6 +130,17 @@ footer { display: none !important; }
   border-radius: 18px !important; padding: 16px !important; gap: 12px !important; }
 .sf-step { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sf-muted);
   padding: 0 2px; }
+
+/* Inside a card, Gradio's own boxes lose their frames so the card reads as one surface */
+.sf-card > .block, .sf-card > .form, .sf-card > .row > .block, .sf-card .form { border: none !important;
+  box-shadow: none !important; background: transparent !important; }
+.sf-card .sf-drop { border: 1.5px dashed var(--sf-strong-border) !important; border-radius: 14px !important;
+  background: var(--sf-row) !important; }
+.sf-card .sf-boxed { border: 1px solid var(--sf-border) !important; border-radius: 14px !important;
+  background: var(--sf-card) !important; }
+
+.sf-card code { background: var(--sf-row) !important; color: var(--sf-text) !important; border-radius: 6px;
+  padding: 1px 5px; overflow-wrap: anywhere; }
 
 /* Review summary */
 .sf-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 2px; }
