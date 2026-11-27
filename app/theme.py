@@ -26,7 +26,36 @@ SANS = ['"Plus Jakarta Sans"', "ui-sans-serif", "system-ui", "-apple-system", '"
 MONO = ['"JetBrains Mono"', "ui-monospace", '"SF Mono"', "Menlo", "Consolas", "monospace"]
 
 # Loaded from Google Fonts; with no internet the system fonts in SANS/MONO take over.
-HEAD = (
+# The light/dark switch. Gradio picks light or dark from the computer when the page opens; once someone clicks the
+# switch, their choice is kept in the browser (key "sf-theme") and applied on every later visit, and re-applied if
+# Gradio sets its own afterwards. Every storage call is guarded: with storage blocked the switch still works for the
+# visit, and the app still follows the computer.
+THEME_SCRIPT = """<script>
+(() => {
+  const KEY = "sf-theme";
+  const saved = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
+  const save = (v) => { try { localStorage.setItem(KEY, v); } catch (e) {} };
+  let choice = saved();
+  const apply = () => {
+    if (!document.body || (choice !== "dark" && choice !== "light")) return;
+    const wantDark = choice === "dark";
+    if (document.body.classList.contains("dark") !== wantDark) document.body.classList.toggle("dark", wantDark);
+  };
+  const start = () => {
+    apply();
+    new MutationObserver(apply).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+  };
+  document.body ? start() : document.addEventListener("DOMContentLoaded", start);
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("[data-sf-theme-toggle]")) return;
+    choice = document.body.classList.contains("dark") ? "light" : "dark";
+    save(choice);
+    apply();
+  });
+})();
+</script>"""
+
+HEAD = THEME_SCRIPT + (
     '<link rel="preconnect" href="https://fonts.googleapis.com">'
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800'
@@ -110,6 +139,9 @@ CSS = (
     "--sf-mono: " + ", ".join(MONO) + ";}"
     ".dark, .dark .gradio-container {" + _vars(DARK, _DARK_SOFT) + "}"
     + """
+/* Gradio paints the page from the computer's light/dark setting; follow the theme instead, so the switch
+   recolors the whole page. --body-background-fill flips with Gradio's .dark class. */
+body { background: var(--body-background-fill) !important; }
 .gradio-container { max-width: 760px !important; margin: 0 auto !important; font-family: var(--sf-sans); }
 footer { display: none !important; }
 
@@ -123,6 +155,14 @@ footer { display: none !important; }
 .sf-mark path { stroke: var(--sf-on-accent); }
 .sf-pill { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 99px; background: var(--sf-badge-bg);
   color: var(--sf-badge-fg); white-space: nowrap; }
+.sf-header-end { display: flex; align-items: center; gap: 8px; }
+.sf-theme { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--sf-border); background: var(--sf-card); color: var(--sf-text); padding: 0; }
+.sf-theme:hover { border-color: var(--sf-accent); }
+.sf-theme:focus-visible { outline: 2px solid var(--sf-accent); outline-offset: 2px; }
+.sf-theme svg { width: 17px; height: 17px; }
+.sf-theme .sf-sun, .dark .sf-theme .sf-moon { display: none; }
+.dark .sf-theme .sf-sun { display: block; }
 .sf-tagline { color: var(--sf-muted); font-size: 14px; margin: 2px 2px 4px; }
 
 /* The three section cards */

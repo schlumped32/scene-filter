@@ -56,6 +56,30 @@ async function run(browser, url, video, scheme, width) {
   if (errors.length) throw new Error(`page errors: ${errors.join('; ')}`);
 }
 
+async function themeSwitch(browser, url) {
+  const bg = p => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const dark = p => p.evaluate(() => document.body.classList.contains('dark'));
+  const DARK = 'rgb(16, 36, 26)', LIGHT = 'rgb(231, 239, 232)';
+  const ctx = await browser.newContext({ colorScheme: 'light' });
+  const page = await ctx.newPage();
+  await page.goto(url);
+  await page.locator('[data-sf-theme-toggle]').waitFor();
+  if (await dark(page)) throw new Error('should start light on a light computer');
+  await page.locator('[data-sf-theme-toggle]').click();
+  if (!(await dark(page)) || (await bg(page)) !== DARK) throw new Error('switch did not turn on dark mode');
+  await page.reload(); await page.locator('[data-sf-theme-toggle]').waitFor(); await page.waitForTimeout(800);
+  if (!(await dark(page))) throw new Error('dark choice not remembered after reopening');
+  await page.locator('[data-sf-theme-toggle]').click();
+  if ((await dark(page)) || (await bg(page)) !== LIGHT) throw new Error('switch did not turn on light mode');
+  await page.reload(); await page.locator('[data-sf-theme-toggle]').waitFor(); await page.waitForTimeout(800);
+  if (await dark(page)) throw new Error('light choice not remembered after reopening');
+  await page.evaluate(() => localStorage.removeItem('sf-theme'));
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.reload(); await page.locator('[data-sf-theme-toggle]').waitFor(); await page.waitForTimeout(800);
+  if (!(await dark(page))) throw new Error('with no saved choice it should follow a dark computer');
+  await ctx.close();
+}
+
 (async () => {
   const url = await waitFor(path.join(work, 'url'));
   const video = await waitFor(path.join(work, 'video'));
@@ -70,6 +94,8 @@ async function run(browser, url, video, scheme, width) {
       console.log(`FAIL ${scheme}: ${e.message}`);
     }
   }
+  try { await themeSwitch(browser, url); console.log('PASS switch'); }
+  catch (e) { failed = true; console.log(`FAIL switch: ${e.message}`); }
   await browser.close();
   process.exit(failed ? 1 : 0);
 })();
