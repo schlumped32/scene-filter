@@ -49,6 +49,9 @@ async function run(browser, url, video, scheme, width) {
   await page.waitForTimeout(500);
   if (await page.getByText(/Done\. 1 scene\(s\) filtered/).isVisible()) throw new Error('old save message still shown after a new scan');
   if (!(await page.locator('.sf-tag').first().isVisible())) throw new Error('scene rows have no pastel tag');
+  // A new scan starts with every scene ticked on screen, matching what will be filtered.
+  const ticks = await page.locator('.sf-list input[type="checkbox"]').evaluateAll(els => els.map(e => e.checked));
+  if (ticks.join() !== 'true,true') throw new Error(`after a rescan the boxes show ${ticks} instead of all ticked`);
   if ((await light.evaluateAll(els => els.filter(e => e.offsetParent).length)) !== 0) throw new Error('light view left open after rescan');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   await page.close();

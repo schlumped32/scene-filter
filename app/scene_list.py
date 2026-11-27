@@ -89,7 +89,15 @@ element.addEventListener('change', (e) => {
   props.value = Array.from(element.querySelectorAll('input[type="checkbox"]:checked')).map(cb => Number(cb.value));
   requestAnimationFrame(() => open.forEach(id => show(id, true)));
 });
-watch('rows', () => open.clear());
+// When the list is redrawn the browser can keep a box's old on/off state, so set every box from the actual
+// list of ticked scenes. A new scan also closes any open view.
+const sync = () => {
+  const ticked = (props.value || []).map(Number);
+  element.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = ticked.includes(Number(cb.value)); });
+};
+watch('rows', () => { open.clear(); sync(); });
+watch('value', sync);
+sync();
 """
 
 
