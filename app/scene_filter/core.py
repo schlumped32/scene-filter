@@ -499,17 +499,18 @@ def merge_hits(
 # Previews are always blurred. The clear frame is only used here, in memory, to make two versions:
 # heavy (today's chunky pixelation) for the scene list, and light ("Look closer": you can tell what kind of
 # scene it is, with no detail). The number is the pixel grid the 320px frame is shrunk to first.
-HEAVY_BLUR_PX = 16
-LIGHT_BLUR_PX = 48
+HEAVY_BLUR_PX = 12  # a little heavier than v8 so "Look closer" (option B) stays a clear step up
+LIGHT_BLUR_PX = 32
+LIGHT_SMOOTH_PX = 15  # extra softening after the light step; the owner picked this strength (option "B")
 
 
-def _blurred(img, grid: int, smooth: bool):
+def _blurred(img, grid: int, smooth: int = 0):
     import cv2
 
     small = cv2.resize(img, (grid, grid), interpolation=cv2.INTER_AREA)
     if not smooth:
         return cv2.resize(small, (320, 320), interpolation=cv2.INTER_NEAREST)
-    return cv2.GaussianBlur(cv2.resize(small, (320, 320), interpolation=cv2.INTER_LINEAR), (9, 9), 0)
+    return cv2.GaussianBlur(cv2.resize(small, (320, 320), interpolation=cv2.INTER_LINEAR), (smooth, smooth), 0)
 
 
 def _write_jpg(path: Path, img) -> bool:
@@ -535,8 +536,8 @@ def save_thumbnails(scenes: list[Scene], frames: dict, hits: list[Hit], out_dir:
         img = cv2.resize(frames[max(inside, key=lambda h: h.score).t], (320, 320), interpolation=cv2.INTER_AREA)
         heavy = out_dir / f"scene_{s.index:03d}.jpg"
         light = out_dir / f"scene_{s.index:03d}_light.jpg"
-        if _write_jpg(heavy, _blurred(img, HEAVY_BLUR_PX, smooth=False)) and \
-                _write_jpg(light, _blurred(img, LIGHT_BLUR_PX, smooth=True)):
+        if _write_jpg(heavy, _blurred(img, HEAVY_BLUR_PX)) and \
+                _write_jpg(light, _blurred(img, LIGHT_BLUR_PX, LIGHT_SMOOTH_PX)):
             s.thumbnail, s.thumbnail_light = str(heavy), str(light)
 
 

@@ -54,3 +54,27 @@ def test_export_json_leaves_out_preview_paths(tmp_path):
     scenes[0].thumbnail, scenes[0].thumbnail_light = "a.jpg", "b.jpg"
     text = Path(core.export_lists(scenes, "movie.mp4", tmp_path)["json"]).read_text()
     assert "a.jpg" not in text and "b.jpg" not in text
+
+
+def _closeup():
+    """A close-up-style picture: dark shapes 16-30px across (like features in a frame-filling shot)."""
+    f = np.full((320, 320, 3), 200, np.uint8)
+    rng = np.random.default_rng(7)
+    for _ in range(40):
+        x, y = rng.integers(20, 300, 2)
+        cv2.circle(f, (int(x), int(y)), int(rng.integers(8, 15)), (40, 40, 40), -1)
+    return f
+
+
+def _sharpest_edge(img):
+    g = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_BGR2GRAY).astype(np.float64)
+    return np.hypot(cv2.Sobel(g, cv2.CV_64F, 1, 0), cv2.Sobel(g, cv2.CV_64F, 0, 1)).max()
+
+
+def test_light_preview_softens_outlines_on_closeups(tmp_path):
+    """The owner chose the softer light blur (option B): on a close-up, no outline keeps more than a fifth of its
+    sharpness. (The first light blur kept 24%, the chosen one about 15%.)"""
+    hits = [core.Hit(10.0, 0.9, ["FEMALE_BREAST_EXPOSED"])]
+    scenes = core.merge_hits(hits, 60)
+    core.save_thumbnails(scenes, {10.0: _closeup()}, hits, tmp_path / "t")
+    assert _sharpest_edge(_img(scenes[0].thumbnail_light)) < 0.2 * _sharpest_edge(_closeup())
