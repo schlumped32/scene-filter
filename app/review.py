@@ -5,7 +5,14 @@ theme.CSS.
 """
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from scene_filter.core import Scene, fmt_ts
+
+
+def file_url(path: str) -> str:
+    """The address the page loads a saved preview from. Spaces and accents in folder names are encoded."""
+    return "/gradio_api/file=" + quote(path, safe="/:\\")
 
 
 def _badge(suspicious: int, accurate: bool, double_check: bool) -> str:
@@ -35,7 +42,15 @@ def summary_html(n_scenes: int, total_s: float, duration_s: float, seconds: floa
 def scene_rows(scenes: list[Scene]) -> list[dict]:
     """What each row of the scene list shows: its time range, a tag naming what was detected, and confidence."""
     return [{"index": s.index, "time": f"{fmt_ts(s.start)} – {fmt_ts(s.end, round_up=True)}",
-             "tag": s.label_text(), "confidence": round(s.peak_score * 100)} for s in scenes]
+             "tag": s.label_text(), "confidence": round(s.peak_score * 100),
+             **_previews(s)} for s in scenes]
+
+
+def _previews(s: Scene) -> dict:
+    # Both blur levels or neither: a row never offers "Look closer" without the lighter picture to show.
+    if s.thumbnail and s.thumbnail_light:
+        return {"thumb": file_url(s.thumbnail), "thumb_light": file_url(s.thumbnail_light)}
+    return {"thumb": None, "thumb_light": None}
 
 
 def apply_picks(scenes: list[Scene], picked: list[int]) -> list[Scene]:
