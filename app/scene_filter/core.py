@@ -169,7 +169,8 @@ class Scene:
     peak_score: float
     hits: int
     labels: list[str] = field(default_factory=list)
-    thumbnail: Optional[str] = None
+    thumbnail: Optional[str] = None        # heavily blurred preview
+    thumbnail_light: Optional[str] = None  # lightly blurred preview, for "Look closer"
     include: bool = True
 
     @property
@@ -495,8 +496,35 @@ def merge_hits(
     return scenes
 
 
-def save_thumbnails(scenes: list[Scene], frames: dict, hits: list[Hit], out_dir: Path, blur: bool = True):
-    """Save one thumbnail per scene (the strongest frame), blurred unless blur=False."""
+# Previews are always blurred. The clear frame is only used here, in memory, to make two versions:
+# heavy (today's chunky pixelation) for the scene list, and light ("Look closer": you can tell what kind of
+# scene it is, with no detail). The number is the pixel grid the 320px frame is shrunk to first.
+HEAVY_BLUR_PX = 16
+LIGHT_BLUR_PX = 48
+
+
+def _blurred(img, grid: int, smooth: bool):
+    import cv2
+
+    small = cv2.resize(img, (grid, grid), interpolation=cv2.INTER_AREA)
+    if not smooth:
+        return cv2.resize(small, (320, 320), interpolation=cv2.INTER_NEAREST)
+    return cv2.GaussianBlur(cv2.resize(small, (320, 320), interpolation=cv2.INTER_LINEAR), (9, 9), 0)
+
+
+def _write_jpg(path: Path, img) -> bool:
+    import cv2
+
+    # imencode + write_bytes instead of imwrite: imwrite fails on Windows if the folder name has
+    # non-English letters in it (for example a user name like "José").
+    ok, jpg = cv2.imencode(".jpg", img)
+    if ok:
+        path.write_bytes(jpg.tobytes())
+    return bool(ok)
+
+
+def save_thumbnails(scenes: list[Scene], frames: dict, hits: list[Hit], out_dir: Path) -> None:
+    """Save a heavy and a light blurred preview per scene, from its strongest frame. Never a clear one."""
     import cv2
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -504,18 +532,12 @@ def save_thumbnails(scenes: list[Scene], frames: dict, hits: list[Hit], out_dir:
         inside = [h for h in hits if s.start <= h.t <= s.end and h.t in frames]
         if not inside:
             continue
-        best = max(inside, key=lambda h: h.score)
-        img = frames[best.t]
-        if blur:
-            small = cv2.resize(img, (16, 16), interpolation=cv2.INTER_AREA)
-            img = cv2.resize(small, (320, 320), interpolation=cv2.INTER_NEAREST)
-        path = out_dir / f"scene_{s.index:03d}.jpg"
-        # imencode + write_bytes instead of imwrite: imwrite fails on Windows if the folder name has
-        # non-English letters in it (for example a user name like "José").
-        ok, jpg = cv2.imencode(".jpg", cv2.resize(img, (320, 320)))
-        if ok:
-            path.write_bytes(jpg.tobytes())
-        s.thumbnail = str(path)
+        img = cv2.resize(frames[max(inside, key=lambda h: h.score).t], (320, 320), interpolation=cv2.INTER_AREA)
+        heavy = out_dir / f"scene_{s.index:03d}.jpg"
+        light = out_dir / f"scene_{s.index:03d}_light.jpg"
+        if _write_jpg(heavy, _blurred(img, HEAVY_BLUR_PX, smooth=False)) and \
+                _write_jpg(light, _blurred(img, LIGHT_BLUR_PX, smooth=True)):
+            s.thumbnail, s.thumbnail_light = str(heavy), str(light)
 
 
 @dataclass
@@ -537,7 +559,6 @@ def scan(
     min_hits: int = 1,
     strong_single: float = STRONG_SINGLE,
     thumbnails: bool = True,
-    blur_thumbnails: bool = True,
     progress: Optional[ProgressFn] = None,
     double_check: bool = True,
 ) -> ScanReport:
@@ -567,7 +588,7 @@ def scan(
         scenes = merge_hits(hits, duration, padding, merge_gap, needed, strong_single)
         report = ScanReport(scenes, duration, len(windows), model is not None)
     if thumbnails:
-        save_thumbnails(scenes, frames, hits, Path(out_dir) / "thumbnails", blur_thumbnails)
+        save_thumbnails(scenes, frames, hits, Path(out_dir) / "thumbnails")
     return report
 
 
@@ -593,7 +614,7 @@ def export_lists(scenes: list[Scene], movie_path: str, out_dir: str | Path) -> d
     files["csv"] = str(p)
 
     p = out_dir / f"{stem}_scenes.json"
-    data = [{**{k: v for k, v in asdict(s).items() if k != "thumbnail"},
+    data = [{**{k: v for k, v in asdict(s).items() if k not in ("thumbnail", "thumbnail_light")},
              "start_ts": fmt_ts(s.start, True), "end_ts": fmt_ts(s.end, True)} for s in kept]
     p.write_text(json.dumps({"movie": Path(movie_path).name, "scenes": data}, indent=2), encoding="utf-8")
     files["json"] = str(p)

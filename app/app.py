@@ -97,7 +97,7 @@ def do_scan(upload, typed, animated, sensitivity, classes, sample_fps, padding, 
     t0 = time.time()
     report = core.scan(
         path, run_dir, double_check=double_check, sample_fps=sample_fps, threshold=threshold, classes=classes, padding=padding,
-        merge_gap=merge_gap, min_hits=int(min_hits), blur_thumbnails=not clear_previews,
+        merge_gap=merge_gap, min_hits=int(min_hits),
         strong_single=core.ANIMATED_STRONG_SINGLE if animated else core.STRONG_SINGLE,
         progress=lambda f, msg: progress(f, desc=msg),
     )
