@@ -2,6 +2,13 @@
 # First run downloads Python, the detector and ffmpeg into %LOCALAPPDATA%\Scene Filter (about 700 MB),
 # then opens the app in your browser. This console window stays open while it runs; closing it quits.
 $ErrorActionPreference = 'Stop'
+# Any unexpected error: show it in red and stop with a non-zero code, so the window stays open.
+trap {
+    Write-Host ''
+    Write-Host "Unexpected error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host $_.InvocationInfo.PositionMessage
+    exit 1
+}
 $ProgressPreference = 'SilentlyContinue'   # Invoke-WebRequest is very slow with its progress bar on
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
@@ -33,6 +40,9 @@ function Fail($msg) {
 }
 
 New-Item -ItemType Directory -Force -Path $BinDir, $env:SCENE_FILTER_OUTPUT | Out-Null
+# Keep a copy of everything shown in this window, so problems can be looked at afterwards.
+try { Start-Transcript -Path (Join-Path $Support 'scene-filter.log') -Append | Out-Null } catch { }
+Write-Host "Started $(Get-Date)  (Windows $([Environment]::OSVersion.Version), PowerShell $($PSVersionTable.PSVersion))"
 Write-Host 'Scene Filter' -ForegroundColor Cyan
 Write-Host ''
 
